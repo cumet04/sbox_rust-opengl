@@ -1,0 +1,9 @@
+[package]
+name = "sbox_rust_opengl"
+version = "0.1.0"
+authors = ["cumet04 <medalhkr@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+gl = "0.14.0"
+glfw = "0.37.0"
