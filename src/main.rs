@@ -26,8 +26,9 @@ const VERTEX_SHADER_SOURCE: &str = r#"
 const FRAGMENT_SHADER_SOURCE: &str = r#"
     #version 330 core
     out vec4 FragColor;
+    uniform vec4 ourColor;
     void main() {
-       FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+       FragColor = ourColor;
     }
 "#;
 
@@ -190,9 +191,19 @@ fn main() {
             gl::ClearColor(0.2, 0.3, 0.3, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
 
-            // draw our first triangle
+            // be sure to activate the shader before any calls to glUniform
             gl::UseProgram(shader_program);
-            gl::BindVertexArray(vao); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
+
+            gl::BindVertexArray(vao);
+
+            // update shader uniform
+            let time_value = glfw.get_time() as f32;
+            let green_value = time_value.sin() / 2.0 + 0.5;
+            let our_color = CString::new("ourColor").unwrap();
+            let vertex_color_location = gl::GetUniformLocation(shader_program, our_color.as_ptr());
+            gl::Uniform4f(vertex_color_location, 0.0, green_value, 0.0, 1.0);
+
+            // render the triangle
             gl::DrawArrays(gl::TRIANGLES, 0, 3);
         }
 
