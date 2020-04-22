@@ -8,69 +8,14 @@ use std::ffi::CString;
 use std::mem;
 use std::os::raw::c_void;
 use std::ptr;
-use std::str;
 use std::sync::mpsc::Receiver;
+
+mod shader;
+use shader::Shader;
 
 // settings
 const SCR_WIDTH: u32 = 800;
 const SCR_HEIGHT: u32 = 600;
-
-const VERTEX_SHADER_SOURCE: &str = r#"
-    #version 330 core
-    layout (location = 0) in vec3 aPos;
-    void main() {
-       gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
-    }
-"#;
-
-const FRAGMENT_SHADER_SOURCE: &str = r#"
-    #version 330 core
-    out vec4 FragColor;
-    uniform vec4 ourColor;
-    void main() {
-       FragColor = ourColor;
-    }
-"#;
-
-unsafe fn check_shader_compile_error(label: &str, shader: GLuint) {
-    let mut success = gl::FALSE as GLint;
-    let mut info_log = Vec::with_capacity(512);
-    info_log.set_len(512 - 1); // subtract 1 to skip the trailing null character
-    gl::GetShaderiv(shader, gl::COMPILE_STATUS, &mut success);
-    if success != gl::TRUE as GLint {
-        gl::GetShaderInfoLog(
-            shader,
-            512,
-            ptr::null_mut(),
-            info_log.as_mut_ptr() as *mut GLchar,
-        );
-        println!(
-            "ERROR: {} shader compile failed\n{}",
-            label,
-            str::from_utf8(&info_log).unwrap()
-        );
-    }
-}
-
-unsafe fn check_linking_error(label: &str, shader: GLuint) {
-    let mut success = gl::FALSE as GLint;
-    let mut info_log = Vec::with_capacity(512);
-    info_log.set_len(512 - 1); // subtract 1 to skip the trailing null character
-    gl::GetProgramiv(shader, gl::LINK_STATUS, &mut success);
-    if success != gl::TRUE as GLint {
-        gl::GetProgramInfoLog(
-            shader,
-            512,
-            ptr::null_mut(),
-            info_log.as_mut_ptr() as *mut GLchar,
-        );
-        println!(
-            "ERROR: {} linkng failed\n{}",
-            label,
-            str::from_utf8(&info_log).unwrap()
-        );
-    }
-}
 
 fn main() {
     // glfw: initialize and configure
@@ -102,35 +47,7 @@ fn main() {
     // ---------------------------------------
     gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 
-    let shader_program = unsafe {
-        // build and compile our shader program
-        // ------------------------------------
-        // vertex shader
-        let vertex_shader = gl::CreateShader(gl::VERTEX_SHADER);
-        let c_str_vert = CString::new(VERTEX_SHADER_SOURCE.as_bytes()).unwrap();
-        gl::ShaderSource(vertex_shader, 1, &c_str_vert.as_ptr(), ptr::null());
-        gl::CompileShader(vertex_shader);
-        check_shader_compile_error("vertex", vertex_shader);
-
-        // fragment shader
-        let fragment_shader = gl::CreateShader(gl::FRAGMENT_SHADER);
-        let c_str_frag = CString::new(FRAGMENT_SHADER_SOURCE.as_bytes()).unwrap();
-        gl::ShaderSource(fragment_shader, 1, &c_str_frag.as_ptr(), ptr::null());
-        gl::CompileShader(fragment_shader);
-        check_shader_compile_error("fragment", fragment_shader);
-
-        // link shaders
-        let shader_program = gl::CreateProgram();
-        gl::AttachShader(shader_program, vertex_shader);
-        gl::AttachShader(shader_program, fragment_shader);
-        gl::LinkProgram(shader_program);
-        check_linking_error("link", shader_program);
-
-        gl::DeleteShader(vertex_shader);
-        gl::DeleteShader(fragment_shader);
-
-        shader_program
-    };
+    let shader = Shader::new("src/shaders/shader.vs", "src/shaders/shader.fs");
 
     let vao = unsafe {
         // set up vertex data (and buffer(s)) and configure vertex attributes
@@ -191,8 +108,7 @@ fn main() {
             gl::ClearColor(0.2, 0.3, 0.3, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
 
-            // be sure to activate the shader before any calls to glUniform
-            gl::UseProgram(shader_program);
+            shader.use_program();
 
             gl::BindVertexArray(vao);
 
@@ -200,7 +116,7 @@ fn main() {
             let time_value = glfw.get_time() as f32;
             let green_value = time_value.sin() / 2.0 + 0.5;
             let our_color = CString::new("ourColor").unwrap();
-            let vertex_color_location = gl::GetUniformLocation(shader_program, our_color.as_ptr());
+            let vertex_color_location = gl::GetUniformLocation(shader.id, our_color.as_ptr());
             gl::Uniform4f(vertex_color_location, 0.0, green_value, 0.0, 1.0);
 
             // render the triangle
