@@ -1,6 +1,3 @@
-extern crate glfw;
-use self::glfw::{Action, Context, Key};
-
 extern crate gl;
 use self::gl::types::*;
 
@@ -8,47 +5,18 @@ use std::mem;
 use std::os::raw::c_void;
 use std::path::Path;
 use std::ptr;
-use std::sync::mpsc::Receiver;
 
 extern crate image;
 use image::GenericImageView;
 
+mod window;
+use window::Window;
+
 mod shader;
 use shader::Shader;
 
-// settings
-const SCR_WIDTH: u32 = 800;
-const SCR_HEIGHT: u32 = 600;
-
 fn main() {
-    // glfw: initialize and configure
-    // ------------------------------
-    let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
-    glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
-    glfw.window_hint(glfw::WindowHint::OpenGlProfile(
-        glfw::OpenGlProfileHint::Core,
-    ));
-    #[cfg(target_os = "macos")]
-    glfw.window_hint(glfw::WindowHint::OpenGlForwardCompat(true));
-
-    // glfw window creation
-    // --------------------
-    let (mut window, events) = glfw
-        .create_window(
-            SCR_WIDTH,
-            SCR_HEIGHT,
-            "LearnOpenGL",
-            glfw::WindowMode::Windowed,
-        )
-        .expect("Failed to create GLFW window");
-
-    window.make_current();
-    window.set_key_polling(true);
-    window.set_framebuffer_size_polling(true);
-
-    // gl: load all OpenGL function pointers
-    // ---------------------------------------
-    gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
+    let mut window = Window::new("", 800, 600);
 
     let shader = Shader::new("src/shaders/shader.vs", "src/shaders/shader.fs");
 
@@ -162,50 +130,19 @@ fn main() {
         texture
     };
 
-    // render loop
-    // -----------
-    while !window.should_close() {
-        // events
-        // -----
-        process_events(&mut window, &events);
+    window.render_loop(|| unsafe {
+        gl::ClearColor(0.2, 0.3, 0.3, 1.0);
+        gl::Clear(gl::COLOR_BUFFER_BIT);
 
-        // render
-        // ------
-        unsafe {
-            gl::ClearColor(0.2, 0.3, 0.3, 1.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT);
-
-            gl::BindTexture(gl::TEXTURE_2D, texture);
-            shader.use_program();
-            gl::BindVertexArray(vao);
-            gl::DrawElements(gl::TRIANGLES, 6, gl::UNSIGNED_INT, ptr::null());
-        }
-
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        // -------------------------------------------------------------------------------
-        window.swap_buffers();
-        glfw.poll_events();
-    }
+        gl::BindTexture(gl::TEXTURE_2D, texture);
+        shader.use_program();
+        gl::BindVertexArray(vao);
+        gl::DrawElements(gl::TRIANGLES, 6, gl::UNSIGNED_INT, ptr::null());
+    });
 
     unsafe {
         gl::DeleteVertexArrays(1, &vao);
         gl::DeleteBuffers(1, &vbo);
         gl::DeleteBuffers(1, &ebo);
-    }
-}
-
-fn process_events(window: &mut glfw::Window, events: &Receiver<(f64, glfw::WindowEvent)>) {
-    for (_, event) in glfw::flush_messages(events) {
-        match event {
-            glfw::WindowEvent::FramebufferSize(width, height) => {
-                // make sure the viewport matches the new window dimensions; note that width and
-                // height will be significantly larger than specified on retina displays.
-                unsafe { gl::Viewport(0, 0, width, height) }
-            }
-            glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
-                window.set_should_close(true)
-            }
-            _ => {}
-        }
     }
 }
