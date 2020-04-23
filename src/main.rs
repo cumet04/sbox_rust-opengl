@@ -17,7 +17,6 @@ mod shader;
 use shader::Shader;
 
 extern crate cgmath;
-use cgmath::prelude::*;
 use cgmath::{perspective, vec3, Deg, Matrix4};
 
 fn main() {
@@ -142,18 +141,18 @@ fn main() {
         gl::BindTexture(gl::TEXTURE_2D, texture);
         shader.use_program();
 
-        // create transformations
-        let model: Matrix4<f32> = Matrix4::from_angle_x(Deg(-55.));
-        let view: Matrix4<f32> = Matrix4::from_translation(vec3(0., 0., -3.));
-        let projection: Matrix4<f32> = perspective(Deg(45.0), 800 as f32 / 600 as f32, 0.1, 100.0);
-        // retrieve the matrix uniform locations
-        let model_loc = gl::GetUniformLocation(shader.id, CString::new("model").unwrap().as_ptr());
-        let view_loc = gl::GetUniformLocation(shader.id, CString::new("view").unwrap().as_ptr());
-        // pass them to the shaders (3 different ways)
-        gl::UniformMatrix4fv(model_loc, 1, gl::FALSE, model.as_ptr());
-        gl::UniformMatrix4fv(view_loc, 1, gl::FALSE, &view[0][0]);
-        // note: currently we set the projection matrix each frame, but since the projection matrix rarely changes it's often best practice to set it outside the main loop only once.
-        shader.set_mat4(&CString::new("projection").unwrap(), &projection);
+        shader.set_mat4(
+            &CString::new("model").unwrap(),
+            &Matrix4::from_angle_x(Deg(-55.)),
+        );
+        shader.set_mat4(
+            &CString::new("view").unwrap(),
+            &Matrix4::from_translation(vec3(0., 0., -3.)),
+        );
+        shader.set_mat4(
+            &CString::new("projection").unwrap(),
+            &perspective(Deg(45.0), 800 as f32 / 600 as f32, 0.1, 100.0),
+        );
 
         gl::BindVertexArray(vao);
         gl::DrawElements(gl::TRIANGLES, 6, gl::UNSIGNED_INT, ptr::null());
