@@ -32,12 +32,12 @@ fn main() {
     };
 
     let vbo = {
-        let vertices: [f32; 32] = [
-            // positions, colors, texture coords
-            0.5, 0.5, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, // top right
-            0.5, -0.5, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, // bottom right
-            -0.5, -0.5, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, // bottom left
-            -0.5, 0.5, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, // top left
+        let vertices: [f32; 44] = [
+            // positions, colors, texture coords, normal
+            0.5, 0.5, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0,// top right
+            0.5, -0.5, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0,0.0, 0.0, 1.0, // bottom right
+            -0.5, -0.5, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,0.0, 0.0, 1.0, // bottom left
+            -0.5, 0.5, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0,0.0, 0.0, 1.0, // top left
         ];
 
         let mut vbo = 0;
@@ -75,7 +75,7 @@ fn main() {
     };
 
     unsafe {
-        let stride = 8 * mem::size_of::<GLfloat>() as GLsizei;
+        let stride = 11 * mem::size_of::<GLfloat>() as GLsizei;
         // position attribute
         gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, stride, ptr::null());
         gl::EnableVertexAttribArray(0);
@@ -99,6 +99,16 @@ fn main() {
             (6 * mem::size_of::<GLfloat>()) as *const c_void,
         );
         gl::EnableVertexAttribArray(2);
+        // normal attribute
+        gl::VertexAttribPointer(
+            3,
+            3,
+            gl::FLOAT,
+            gl::FALSE,
+            stride,
+            (8 * mem::size_of::<GLfloat>()) as *const c_void,
+        );
+        gl::EnableVertexAttribArray(3);
     }
 
     // load and create a texture
@@ -140,6 +150,9 @@ fn main() {
 
         gl::BindTexture(gl::TEXTURE_2D, texture);
         shader.use_program();
+
+        shader.set_vec3(&CString::new("lightColor").unwrap(), 0.0, 1.0, 1.0);
+        shader.set_vec3(&CString::new("lightPos").unwrap(), 0.0, 0.0, 2.0);
 
         shader.set_mat4(
             &CString::new("model").unwrap(),
